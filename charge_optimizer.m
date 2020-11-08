@@ -3,6 +3,7 @@ clear;clc;close all
 %% Inputs
 % Simulation parameters
 dt = .5;                        % hours
+time = 0:dt:24;
 
 % Cars to be charged
 num_cars = 3;
@@ -14,12 +15,12 @@ start_times = [9 9 9];          % hours from midnight
 stop_times = [17 17 15];        % hours from midnight
 
 % Grid externalities
-max_grid_pwr = 200;                 % kW
-non_charging_grid_pwr = zeros(1,25);% kW - as fn of hours from midnight
-renewable_score = zeros(1,25);  % lbs CO2 / kWh
+max_grid_pwr = 18;                      % kW
+non_charging_grid_pwr = zeros(1,25);    % kW - as fn of hours from midnight
+global CO2_footprint                    % gross global, fixme plz
+CO2_footprint = load_CO2_data(time);    % lbs CO2 / kWh
 
 %% Optimization problem definition
-time = 0:dt:24;
 num_timesteps = length(time);
 P_size = [num_timesteps, num_cars];
 P = optimvar('P', P_size, 'LowerBound',0,'UpperBound',max(max_charge_pwr));
@@ -61,6 +62,7 @@ figure; hold all
 for car=1:num_cars
     plot(time, sol.P(:,car),'DisplayName',['Car ' num2str(car)])
 end
+plot(time, sum(sol.P,2),'DisplayName','Total')
 xlabel('Time (hours)')
 ylabel('Power (kW)')
 legend
@@ -68,9 +70,24 @@ improvePlot
 
 %% Helper functions
 % Optimization objective function
-function grid_variance = objective(P)
+function cost = objective(P)
+
+    num_cars = size(P,2);
+    
     grid_power = sum(P,2);
     grid_variance = variance(grid_power);
+    
+    car_variance = optimexpr(1, num_cars);
+    for car = 1:num_cars
+        car_power = P(:,car);
+        car_variance(car) = variance(car_power);
+    end
+    
+    global CO2_footprint
+    dirtiness = sum(grid_power' .* CO2_footprint);
+    
+    a = 1; b = 1; c = 1;
+    cost = a * grid_variance + b * sum(car_variance) + c * dirtiness;
 end
 
 function v = variance(x)

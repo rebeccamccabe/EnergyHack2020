@@ -6,16 +6,18 @@ dt = .5;                        % hours
 time = 0:dt:24;
 
 % Cars to be charged
-num_cars = 3;
-capacities = [100 100 100];     % kWh
-start_soes = [10 30 20];        % percent 0-100
-end_soes = [50 80 80];          % percent 0-100
-max_charge_pwr = [100 100 100]; % kW
-start_times = [9 9 9];          % hours from midnight
-stop_times = [17 17 15];        % hours from midnight
+num_cars = 10;
+capacities = 100*ones(1,num_cars);          % kWh
+start_soes = randi(60,1,num_cars);          % percent 0-100
+end_soes = (100 - start_soes) ...
+    .* rand(1,num_cars) + start_soes;       % percent 0-100
+max_charge_pwr = 100*ones(1,num_cars);      % kW
+start_times = 7+(13-7)*rand(1,num_cars);    % hours from midnight
+charge_times = randi(11,1,num_cars);        % hours
+stop_times = charge_times + start_times;    % hours from midnight
 
 % Grid externalities
-max_grid_pwr = 18;                      % kW
+max_grid_pwr = 50;                      % kW
 non_charging_grid_pwr = zeros(1,25);    % kW - as fn of hours from midnight
 global CO2_footprint                    % gross global, fixme plz
 CO2_footprint = load_CO2_data(time);    % lbs CO2 / kWh
